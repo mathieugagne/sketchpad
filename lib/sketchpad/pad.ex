@@ -19,8 +19,9 @@ defmodule Sketchpad.Pad do
       stroke)
   end
 
-  def clear(pid) do
+  def clear(pid, pad_id) do
     GenServer.call(pid, :clear)
+    Sketchpad.PadChannel.broadcast_clear(pad_id)
   end
 
   def render(pid) do

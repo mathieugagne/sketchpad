@@ -2,6 +2,10 @@ defmodule Sketchpad.PadChannel do
   use Sketchpad.Web, :channel
   alias Sketchpad.{Pad, Presence, Endpoint}
 
+  def broadcast_clear(pad_id) do
+    Endpoint.broadcast!("pad:#{pad_id}", "clear", %{})
+  end
+
   def broadcast_stroke(pad_id, from, user_id, stroke) do
     Endpoint.broadcast_from!(from, "pad:#{pad_id}", "stroke", %{
       user_id: user_id,
@@ -12,22 +16,26 @@ defmodule Sketchpad.PadChannel do
   # /1 is the topic
   def join("pad:" <> pad_id, _params, socket) do
     send(self(), :after_join)
-
     {:ok, pad} = Pad.find(pad_id)
-    data = Pad.render(pad)
 
     socket =
       socket
       |> assign(:pad_id, pad_id)
       |> assign(:pad, pad)
 
-    {:ok, %{data: data}, socket}
+    {:ok, socket}
   end
 
   def handle_info(:after_join, socket) do
-    %{user_id: user_id} = socket.assigns
+    %{pad: pad, user_id: user_id} = socket.assigns
     {:ok, _ref} = Presence.track(socket, user_id, %{device: "browser"})
-    push(socket, "presence_state", Presence.list(socket))
+    push socket, "presence_state", Presence.list(socket)
+
+    for {id, %{strokes: strokes}} <- Pad.render(pad) do
+      for stroke <- Enum.reverse(strokes) do
+        push socket, "stroke", %{user_id: id, stroke: stroke}
+      end
+    end
 
     {:noreply, socket}
   end
@@ -43,7 +51,7 @@ defmodule Sketchpad.PadChannel do
   end
 
   def handle_in("clear", _params, socket) do
-    broadcast!(socket, "clear", %{})
+    :ok = Pad.clear(socket.assigns.pad, socket.assigns.pad_id)
     {:reply, :ok, socket}
   end
 end
