@@ -30,6 +30,11 @@ let App = {
     })
     this.padChannel.on("clear", () => this.pad.clear())
 
+    this.exportButton.addEventListener("click", e => {
+      e.preventDefault()
+      window.open(this.pad.getImageURL())
+    })
+
     this.pad.on("stroke", data => {
       this.padChannel.push("stroke", data)
         // .receive("ok", ..) # Could add callbacks based on PadChannel#handle_in/3
