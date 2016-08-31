@@ -1,11 +1,27 @@
 defmodule Sketchpad.PadChannel do
   use Sketchpad.Web, :channel
-  alias Sketchpad.{Presence}
+  alias Sketchpad.{Pad, Presence, Endpoint}
+
+  def broadcast_stroke(pad_id, from, user_id, stroke) do
+    Endpoint.broadcast_from!(from, "pad:#{pad_id}", "stroke", %{
+      user_id: user_id,
+      stroke: stroke
+    })
+  end
 
   # /1 is the topic
-  def join("pad:" <> _pad_id, _params, socket) do
+  def join("pad:" <> pad_id, _params, socket) do
     send(self(), :after_join)
-    {:ok, socket}
+
+    {:ok, pad} = Pad.find(pad_id)
+    data = Pad.render(pad)
+
+    socket =
+      socket
+      |> assign(:pad_id, pad_id)
+      |> assign(:pad, pad)
+
+    {:ok, %{data: data}, socket}
   end
 
   def handle_info(:after_join, socket) do
@@ -20,10 +36,9 @@ defmodule Sketchpad.PadChannel do
   #  a valid data structure so we're not able to send
   #  whatever we want through the socket
   def handle_in("stroke", data, socket) do
-    broadcast_from!(socket, "stroke", %{
-      user_id: socket.assigns.user_id,
-      stroke: data
-    })
+    %{user_id: user_id, pad: pad, pad_id: pad_id} = socket.assigns
+    Pad.put_stroke(pad, pad_id, user_id, data)
+
     {:reply, :ok, socket}
   end
 

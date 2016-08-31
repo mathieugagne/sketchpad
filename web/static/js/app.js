@@ -19,6 +19,10 @@ let App = {
 
     this.padChannel = socket.channel("pad:lobby")
     this.padChannel.join()
+      .receive("ok", ({data}) => {
+        this.pad.loadJSON(data)
+        this.pad.redraw()
+      })
 
     this.bind()
   },
