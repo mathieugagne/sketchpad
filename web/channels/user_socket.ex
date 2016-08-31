@@ -2,7 +2,7 @@ defmodule Sketchpad.UserSocket do
   use Phoenix.Socket
 
   ## Channels
-  # channel "room:*", Sketchpad.RoomChannel
+  channel "pad:*", Sketchpad.PadChannel
 
   ## Transports
   transport :websocket, Phoenix.Transports.WebSocket,
