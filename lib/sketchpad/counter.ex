@@ -14,7 +14,15 @@ defmodule Sketchpad.Counter do
   end
 
   def init(initial_count) do
+    IO.puts "Starting with #{initial_count}"
+    :timer.send_interval(500, :tick)
     {:ok, initial_count}
+  end
+
+  def handle_info(:tick, 0), do: raise "boom"
+  def handle_info(:tick, count) do
+    IO.puts "Tick #{count}"
+    {:noreply, count - 1}
   end
 
   def handle_cast(:inc, count) do
