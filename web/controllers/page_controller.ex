@@ -20,7 +20,10 @@ defmodule Sketchpad.PageController do
 
   defp require_user(conn, _) do
     if user_id = get_session(conn, :user_id) do
-      assign(conn, :user_id, user_id)
+      token = Phoenix.Token.sign(conn, "user token salt", user_id)
+      conn
+      |> assign(:user_id, user_id)
+      |> assign(:user_token, token)
     else
       conn
       |> put_flash(:info, "You must signin.")
