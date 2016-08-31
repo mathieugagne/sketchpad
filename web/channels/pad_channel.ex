@@ -1,5 +1,6 @@
 defmodule Sketchpad.PadChannel do
   use Sketchpad.Web, :channel
+  alias Sketchpad.{Presence}
 
   # /1 is the topic
   def join("pad:" <> _pad_id, _params, socket) do
@@ -8,6 +9,10 @@ defmodule Sketchpad.PadChannel do
   end
 
   def handle_info(:after_join, socket) do
+    %{user_id: user_id} = socket.assigns
+    {:ok, _ref} = Presence.track(socket, user_id, %{device: "browser"})
+    push(socket, "presence_state", Presence.list(socket))
+
     {:noreply, socket}
   end
 
