@@ -28,6 +28,24 @@ defmodule Sketchpad.Pad do
     GenServer.call(pid, :render)
   end
 
+  def png_ack(user_id, encoded_img) do
+    with {:ok, decoded_img} <- Base.decode64(encoded_img),
+         {:ok, png_path} <- Briefly.create(),
+         :ok <- File.write(png_path, decoded_img),
+         {:ok, jpeg_path} <- Briefly.create(),
+         args = ["-background", "white", "-flatten", png_path, "jpg:" <> jpeg_path],
+         {_, 0} <- System.cmd("convert", args),
+         {ascii, 0} <- System.cmd("jp2a", ["-i", jpeg_path]) do
+
+      IO.puts ascii
+      IO.puts ">>#{user_id}"
+
+      {:ok, ascii}
+    else
+      _ -> :error
+    end
+  end
+
   ## Server
 
   def start_link(topic) do
@@ -35,7 +53,19 @@ defmodule Sketchpad.Pad do
   end
 
   def init("pad:" <> pad_id) do
+    schedule_png_request()
     {:ok, %{users: %{}, pad_id: pad_id}}
+  end
+
+  def handle_info(:request_png, state) do
+    case Sketchpad.Presence.list("pad:" <> state.pad_id) do
+      users when map_size(users) === 0 -> :noop
+      users ->
+        {_, %{metas: [%{phx_ref: ref} | _]}} = Enum.random(users)
+        Sketchpad.PadChannel.broadcast_png_request(state.pad_id, ref)
+    end
+    schedule_png_request()
+    {:noreply, state}
   end
 
   def handle_call(:clear, _from, state) do
@@ -57,6 +87,10 @@ defmodule Sketchpad.Pad do
     end)
 
     %{state | users: users}
+  end
+
+  defp schedule_png_request() do
+    Process.send_after(self(), :request_png, 3_000)
   end
   
 end

@@ -24,6 +24,11 @@ let App = {
   },
 
   bind() {
+    this.padChannel.on("pad_request", () => {
+      console.log("got pad request from server")
+      this.padChannel.push("pad_ack", {img: this.pad.getImageURL()})
+    })
+
     this.clearButton.addEventListener("click", e => {
       e.preventDefault()
       this.padChannel.push("clear")
