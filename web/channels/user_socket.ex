@@ -5,7 +5,11 @@ defmodule Sketchpad.UserSocket do
   # channel "room:*", Sketchpad.RoomChannel
 
   ## Transports
-  transport :websocket, Phoenix.Transports.WebSocket
+  transport :websocket, Phoenix.Transports.WebSocket,
+    check_origin: false
+    # Check that the socket was initiated from this whitelist of domains
+    # check_origin: ["//example.com"]
+
   # transport :longpoll, Phoenix.Transports.LongPoll
 
   # Socket params are passed from the client and can
@@ -19,8 +23,15 @@ defmodule Sketchpad.UserSocket do
   #
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
-  def connect(_params, socket) do
-    {:ok, socket}
+
+  import Phoenix.Token, only: [verify: 4]
+  def connect(%{"token" => token}, socket) do
+    case verify(socket, "user token salt", token, max_age: 1209600) do
+      {:ok, user_id} ->
+        {:ok, assign(socket, :user_id, user_id)}
+      {:error, _invalid} ->
+        :error
+    end
   end
 
   # Socket id's are topics that allow you to identify all sockets for a given user:
